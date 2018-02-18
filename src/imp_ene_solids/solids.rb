@@ -34,67 +34,6 @@ module Imp_EneSolidTools
   # reason why this project was started in the first place.
   class Solids
    
-=begin    
-    # Multi subtract - trim the secondary object from an array of primary objects
-    # primary      array of objects to be cut
-    # secondary    group or component to cut with 
-    # settings    hash:
-    #   paint     is Nil or is a material in the model's materials collection
-    #   hide
-    #   cut_sub   if true, subtract from subcomponents
-    #   unique    if true, make target object unique
-    # return value is undefined
-=end
-
-    def self.multisub(primary, secondary, settings)
-      @progress = 'Working |'
-      
-      #Create material to apply to the cut faces if settings[:paint]
-      # I can imagine painting cut faces with cross hatching, etc.
-      if settings[:paint]
-        model = Sketchup.active_model
-        materials = model.materials
-        paint = materials['Ene_Cut_Face_Color']
-        if !paint
-          paint = materials.add('Ene_Cut_Face_Color') 
-          #@paint.color = 'red'
-          paint.color = 'DimGray'
-        end 
-      else
-        paint = nil      
-      end
-    # scale = 1000 for the top level, the Dave Method
-    multisub_recurse(primary, secondary, scale = 1000, paint, settings[:cut_sub], settings[:unique])
-    end
-
-    def self.multisub_recurse(primary, secondary, scale, paint, cut_sub, unique)
-      #primary is an array of groups or component instances
-      primary.each do |target|
-        Sketchup.status_text = @progress
-        @progress << '|'
-        next if target == secondary # don't cut yourself
-        next unless target.bounds.intersect(secondary.bounds) #quick but dirty exclude
-        target.make_unique if unique
-  
-        if !subtract(target, secondary, false, true, scale, paint)  
-         # if a primary group/component is totally empty sketchup will mark it as deleted
-         # and it will be removed after the model.commit statement in tools.rb
-         #puts 'Empty or Not Solid in Solids::multisub'
-        end     
-        
-        # recursuvely subtract from the subcomponents
-        next if cut_sub == false
-        entities(target).select {|e| [Sketchup::Group, Sketchup::ComponentInstance].include?(e.class)}.each do |child|
-          tr_save = child.transformation
-          child.transformation = target.transformation * child.transformation
-          #cut subcomponents with a scale of 1
-          multisub_recurse([child], secondary, 1, paint, cut_sub, unique)
-          child.transformation = tr_save 
-        end
-      end
-    end     
- 
-
 =begin # Trim one container using another.
     #
     # The primary Group/ComponentInstance keeps its material, layer, attributes
@@ -156,7 +95,7 @@ module Imp_EneSolidTools
       secondary.transform!(tr)
       
       # make a reference copy of the original objects
-      # make a copy of the secondary that will be modified
+      # and make a copy of the secondary that will be modified
       secondary_reference_copy = primary.parent.entities.add_group
 	    secondary_reference_copy.name = 'secondary_reference_copy'
       move_into(secondary_reference_copy, secondary, true)
@@ -165,12 +104,12 @@ module Imp_EneSolidTools
 	    secondary_to_modify.name = 'secondary_to_modify'
       move_into(secondary_to_modify, secondary, keep_secondary)
       
-      #transform secondary back to original scale if we are keeping it
-      secondary.transformation = transS if keep_secondary
-      
       primary_reference_copy = primary.parent.entities.add_group
 	    primary_reference_copy.name = 'primary_reference_copy'
       move_into(primary_reference_copy, primary, true)
+      
+      #transform secondary back to original scale if we are keeping it
+      secondary.transformation = transS if keep_secondary
 
       #grab the entities collections
       primary_ents = entities(primary)
@@ -202,6 +141,7 @@ module Imp_EneSolidTools
       move_into(primary, secondary_to_modify, false)
 
       # Purge edges not binding 2 faces
+      # Would == 0 give the same results?
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size < 2})
      
       # Remove co-planar edges
@@ -379,9 +319,78 @@ module Imp_EneSolidTools
       primary.model.commit_operation if wrap_in_operator
       is_solid?(primary)
     end
+    
+=begin    
+    # Multi subtract - trim the secondary object from an array of primary objects
+    # primary      array of objects to be cut
+    # secondary    group or component to cut with 
+    # settings    hash:
+    #   cut_sub   if true subtract from subcomponents
+    #   hide      if true hide the secondary object after the operation is finished
+    #   paint     if true paint the new faces with a 'dark dark grey' material
+    #   unique    if true, make each target object unique
+    # return value is undefined
+=end
 
+    def self.multisub(primary, secondary, settings)
+      @progress = 'Working |'
+      
+      # Create a material to apply to the cut faces if settings[:paint]
+      # I can imagine painting cut faces with cross hatching, etc.
+      if settings[:paint]
+        model = Sketchup.active_model
+        materials = model.materials
+        paint = materials['Ene_Cut_Face_Color']
+        if !paint
+          paint = materials.add('Ene_Cut_Face_Color') 
+          #@paint.color = 'red'
+          paint.color = 'DimGray'
+        end 
+      else
+        paint = nil      
+      end
+      
+      multisub_recurse(primary, secondary, scale = 1000, paint, settings[:cut_sub], settings[:unique])
+    end
 
-    private
+  private
+    
+    # Recursively subtract the seconary object from the primary
+    # primary     array of component and group objects
+    # secondary   component or a group
+    # scale       scale for the top level Dave Method
+    # paint       nil or a sketchup material
+    # cut_sub     if true then recurse
+    # unique      if true make primary objects unique
+    
+    def self.multisub_recurse(primary, secondary, scale, paint, cut_sub, unique)
+      primary.each do |target|
+        Sketchup.status_text = @progress
+        @progress << '|'
+        # running with scissors?
+        next if target == secondary 
+        # quick but dirty exclude
+        next unless target.bounds.intersect(secondary.bounds) 
+        target.make_unique if unique
+  
+        if !subtract(target, secondary, false, true, scale, paint)  
+         # if a primary group/component is totally empty sketchup will mark it as deleted
+         # and it will be removed after the model.commit statement in tools.rb
+         #puts 'Empty or Not Solid in Solids::multisub'
+        end     
+        
+        next if cut_sub == false
+        
+        # recurse
+        entities(target).select {|e| [Sketchup::Group, Sketchup::ComponentInstance].include?(e.class)}.each do |child|
+          tr_save = child.transformation
+          child.transformation = target.transformation * child.transformation
+          multisub_recurse([child], secondary, 1, paint, cut_sub, unique)
+          child.transformation = tr_save 
+        end
+      end
+    end     
+ 
 
     # Internal: Get the Entities object for either a Group or CompnentInstance.
     # SU 2014 and lower doesn't support Group#definition.
