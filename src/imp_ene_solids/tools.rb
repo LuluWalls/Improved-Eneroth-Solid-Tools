@@ -1,7 +1,7 @@
 # load 'imp_ene_solids/tools.rb'
 # 
 # I'm fairly certain the ene solid tools work the same as their original design.
-#
+# except I've removed the ability to keep the original coplanar edges until this is tested.
 #
 # About the Multi-Subtract tool
 # The multi-subtract tool allows the user to select multiple objects to be 'cut' with a secondary object.
@@ -9,8 +9,8 @@
 # To use the Multi-subtract tool
 # Select zero, one or more solids,  'the primary collection'
 # Click the multi-subtract tool button
-# - add to the primary collection by holding down the Alt/Option on Mac, Ctrl on PC while clicking on an object
-# - add or subtract to/from the primary collection by holding down the Shift key while clicking on an object
+#   add to the primary collection by holding down the Alt/Option on Mac, Ctrl on PC while clicking on an object
+#   add or subtract to/from the primary collection by holding down the Shift key while clicking on an object
 #
 # Click on the secondary object to perform the subtraction
 #
@@ -23,7 +23,7 @@
 #    Cut into Subcomponents
 #    Hide the secondary object after subtraction
 #    Paint the new faces (with a default material named 'Ene_Cut_Face_Color')
-# 
+#    Make each primary object unique
 # 
 
 module Imp_EneSolidTools
@@ -247,7 +247,7 @@ module Imp_EneSolidTools
       case key
         when COPY_MODIFIER_KEY, CONSTRAIN_MODIFIER_KEY
           @multisub_state = 0
-          if @primary.length != 0 
+          if @primary.size != 0 
             @cursor = @cursor_secondary
             Sketchup.status_text = self.class::STATUS_SECONDARY
             onSetCursor() #update cursor
@@ -270,7 +270,7 @@ module Imp_EneSolidTools
       #Add and remove objects from the @primary array
       case @multisub_state
         when 0 
-          if @primary.length == 0 
+          if @primary.size == 0 
             @primary << picked 
             Sketchup.status_text = self.class::STATUS_SECONDARY
             @cursor = @cursor_secondary
@@ -295,7 +295,7 @@ module Imp_EneSolidTools
       end #end case
 
       # we have clicked on the secondary object
-      # Case == 0 and @primary.length != 0
+      # Case == 0 and @primary.size != 0
       secondary = picked
         
       begin
@@ -350,7 +350,7 @@ module Imp_EneSolidTools
       end
     end
     
-    # Selection Observer callback to catch select all(cntl-A) 
+    # Selection Observer callback to catch select all(ctrl-A) 
     def onSelectionBulkChange(selection)
       @primary = selection.to_a
       @primary.reject! {|ent| ![Sketchup::Group, Sketchup::ComponentInstance].include?(ent.class)}
@@ -365,7 +365,7 @@ module Imp_EneSolidTools
     end
 
     def resume(view)
-      Sketchup.status_text = @primary.length == 0 ? self.class::STATUS_PRIMARY : self.class::STATUS_SECONDARY
+      Sketchup.status_text = @primary.size == 0 ? self.class::STATUS_PRIMARY : self.class::STATUS_SECONDARY
     end
 
     def ene_tool_cycler_icon

@@ -87,7 +87,7 @@ module Imp_EneSolidTools
       # That is up to the user to do manually if they want to.
       primary.make_unique if primary.is_a?(Sketchup::Group)
 
-      # scale every thing by 1000
+      # scale every thing by 1000 or scale in the call
       transP = primary.transformation
       transS = secondary.transformation
       tr = Geom::Transformation.scaling(scale)
@@ -114,7 +114,10 @@ module Imp_EneSolidTools
       #grab the entities collections
       primary_ents = entities(primary)
       secondary_ents = entities(secondary_to_modify)
-
+      
+      # collect the coplanar and unattached edges of the object 
+      #old_coplanar = cache_stray_edges(primary_ents, secondary_ents)
+      
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
       
@@ -146,6 +149,9 @@ module Imp_EneSolidTools
      
       # Remove co-planar edges
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
+      
+      # restore the coplanar and unattached edges of the object 
+      #old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
       
       # unscale object
       primary.transformation = transP
@@ -208,6 +214,9 @@ module Imp_EneSolidTools
       primary_ents = entities(primary)
       secondary_ents = entities(secondary_to_modify)
 
+      # collect the coplanar and unattached edges of the object 
+      #old_coplanar = cache_stray_edges(primary_ents, secondary_ents)
+ 
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
 
@@ -232,7 +241,10 @@ module Imp_EneSolidTools
  
       # Remove co-planar edges
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
-      
+            
+      # restore the coplanar and unattached edges of the object 
+      #old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
+ 
       # unscale object
       primary.transformation = transP
       
@@ -293,6 +305,9 @@ module Imp_EneSolidTools
       primary_ents = entities(primary)
       secondary_ents = entities(secondary_to_modify)
 
+      # collect the coplanar and unattached edges of the object 
+      #old_coplanar = cache_stray_edges(primary_ents, secondary_ents)
+ 
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
   
@@ -312,6 +327,9 @@ module Imp_EneSolidTools
 	  
       # Purge edges not binding 2 faces
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size < 2})
+
+      # restore the coplanar and unattached edges of the object 
+      #old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
 
       # unscale object
       primary.transformation = transP
@@ -355,7 +373,7 @@ module Imp_EneSolidTools
 
   private
     
-    # Recursively subtract the seconary object from the primary
+    # Recursively subtract the secondary object from the primary
     # primary     array of component and group objects
     # secondary   component or a group
     # scale       scale for the top level Dave Method
@@ -392,7 +410,7 @@ module Imp_EneSolidTools
     end     
  
 
-    # Internal: Get the Entities object for either a Group or CompnentInstance.
+    # Internal: Get the Entities object for either a Group or ComponentInstance.
     # SU 2014 and lower doesn't support Group#definition.
     #
     # group_or_component - The group or ComponentInstance object.
@@ -517,6 +535,22 @@ module Imp_EneSolidTools
       temp.explode
     end
     
+    
+    # collect the coplanar and unattached edges of the object
+    # these could for example represent drawing details and text the user wishes to keep
+#    def self.cache_stray_edges(primary_ents, secondary_ents)
+#      coplanar = []
+#      find_coplanar_edges(primary_ents).each {|e| coplanar << [e.start.position, e.end.position]}
+#      find_coplanar_edges(secondary_ents).each {|e| coplanar << [e.start.position, e.end.position]}
+#      #collect naked edges too
+#      primary_ents.each {|e| coplanar << [e.start.position, e.end.position] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
+#      secondary_ents.each {|e| coplanar << [e.start.position, e.end.position] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
+#      puts 'coplanar ' + coplanar.size.to_s
+#      puts 'coplanar ' + coplanar.inspect
+#      coplanar
+#    end
+
+    
     # Internal: Find all co-planar edges
     def self.find_coplanar_edges(ents)
       ents.select do |e|
@@ -529,27 +563,16 @@ module Imp_EneSolidTools
     # Internal: Find faces based on their position relative to the
     # other solid.
     def self.find_faces_inside_outside(source, reference, inside)
-	  entities(source).select do |f|
+    entities(source).select do |f|
         next unless f.is_a?(Sketchup::Face)
         point = point_in_face(f)
-        
-        if point
-          point.transform!(source.transformation)
-          next if inside != inside_solid?(point, reference, !inside)
-        #else
-          #for tiny faces we can test if any vertex is inside/outside the reference object
-          #next unless f.vertices.any? {|v|
-            #point = v.position
-            #point.transform!(source.transformation)
-            #inside != inside_solid?(point, reference, !inside)
-          #}
-        end
-        
-	    true
+        next unless point
+        point.transform!(source.transformation)
+        next if inside != inside_solid?(point, reference, !inside)
+        true
       end
     end
-
-    
+      
     # Check whether Point3d is inside, outside or the surface of solid.
     #
     # point                - Point3d to test (in the coordinate system the
@@ -591,40 +614,40 @@ module Imp_EneSolidTools
       intersection_points = entities(container).map do |face|
         next unless face.is_a?(Sketchup::Face)
 
-		# If point is on face of solid, return value specified for that case.
-		clasify_point = face.classify_point(point)
-		return on_face_return_value if [Sketchup::Face::PointInside, Sketchup::Face::PointOnEdge, Sketchup::Face::PointOnVertex].include?(clasify_point)
-			
-		intersection = Geom.intersect_line_plane(ray, face.plane)
-		next unless intersection
-		next if intersection == point
+        # If point is on face of solid, return value specified for that case.
+        clasify_point = face.classify_point(point)
+        return on_face_return_value if [Sketchup::Face::PointInside, Sketchup::Face::PointOnEdge, Sketchup::Face::PointOnVertex].include?(clasify_point)
+          
+        intersection = Geom.intersect_line_plane(ray, face.plane)
+        next unless intersection
+        next if intersection == point
 
-		# Intersection must be in the direction ray is casted to count.
-		next unless (intersection - point).samedirection?(vector)
+        # Intersection must be in the direction ray is casted to count.
+        next unless (intersection - point).samedirection?(vector)
 
-		# Check intersection's relation to face.
-		# Counts as intersection if on face, including where cut-opening component cuts it.
-		classify_intersection = face.classify_point(intersection)
-		next unless [Sketchup::Face::PointInside, Sketchup::Face::PointOnEdge, Sketchup::Face::PointOnVertex].include?(classify_intersection)
+        # Check intersection's relation to face.
+        # Counts as intersection if on face, including where cut-opening component cuts it.
+        classify_intersection = face.classify_point(intersection)
+        next unless [Sketchup::Face::PointInside, Sketchup::Face::PointOnEdge, Sketchup::Face::PointOnVertex].include?(classify_intersection)
 
-		intersection
-	  end
+        intersection
+	    end
 		
       intersection_points.compact!
       
-	  #erase hits that are too close together at the edge of two faces
-      #not needed with the Dave Method implemented
+      #erase hits that are too close together at the edge of two faces
+      #not needed? with the Dave Method implemented
       # if a is less than .002 from a+1 then delete a
-	  #(intersection_points.length - 1).times do |a|
-	  #  next if (intersection_points[a].x - intersection_points[a+1].x).abs > 0.002
-	  #  next if (intersection_points[a].y - intersection_points[a+1].y).abs > 0.002
-	  #  next if (intersection_points[a].z - intersection_points[a+1].z).abs > 0.002
-	  #  intersection_points[a] = nil 
-	  # end
-	  #intersection_points.compact!
-     
-     
-	  intersection_points = intersection_points.inject([]){ |a, p0| a.any?{ |p| p == p0 } ? a : a << p0 }
+      #(intersection_points.size - 1).times do |a|
+      #  next if (intersection_points[a].x - intersection_points[a+1].x).abs > 0.002
+      #  next if (intersection_points[a].y - intersection_points[a+1].y).abs > 0.002
+      #  next if (intersection_points[a].z - intersection_points[a+1].z).abs > 0.002
+      #  intersection_points[a] = nil 
+      # end
+      #intersection_points.compact!
+       
+       
+      intersection_points = intersection_points.inject([]){ |a, p0| a.any?{ |p| p == p0 } ? a : a << p0 }
       intersection_points.size.odd?
     end
     
@@ -635,13 +658,13 @@ module Imp_EneSolidTools
     #
     # container - The Group or ComponentInstance to test.
     #
-    # Returns nil if not a Group or Component || if entities.length == 0
+    # Returns nil if not a Group or Component || if entities.size == 0
     #      then true/false if each edges is attached to an even number of faces
     def self.is_solid?(container)
       return unless [Sketchup::Group, Sketchup::ComponentInstance].include?(container.class)
       ents = entities(container)
       # return nil if the container is empty
-      return if ents.length == 0
+      return if ents.size == 0
       !ents.any? { |e| e.is_a?(Sketchup::Edge) && e.faces.size.odd? }
     end
     
