@@ -76,7 +76,7 @@ module Imp_EneSolidTools
     def self.subtract(primary, secondary, wrap_in_operator = true, keep_secondary = false, scale = 1000, paint = nil)
       
       #Check if both groups/components are solid, and that there are edges
-      return if !entities(primary).any? { |e| e.is_a?(Sketchup::Edge)} #
+      return if !entities(primary).any? {|e| e.is_a?(Sketchup::Edge)} #
       return if !is_solid?(primary) || !is_solid?(secondary)
       op_name = keep_secondary ? "Trim" : "Subtract"
       primary.model.start_operation(op_name, true) if wrap_in_operator
@@ -116,8 +116,8 @@ module Imp_EneSolidTools
       secondary_ents = entities(secondary_to_modify)
       
       # collect the coplanar and unattached edges of the object 
-      #old_coplanar = cache_stray_edges(primary_ents, secondary_ents)
-      
+      old_coplanar = cache_stray_edges(primary, secondary_to_modify, true)
+
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
       
@@ -151,7 +151,7 @@ module Imp_EneSolidTools
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
       
       # restore the coplanar and unattached edges of the object 
-      #old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
+      old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
       
       # unscale object
       primary.transformation = transP
@@ -215,7 +215,7 @@ module Imp_EneSolidTools
       secondary_ents = entities(secondary_to_modify)
 
       # collect the coplanar and unattached edges of the object 
-      #old_coplanar = cache_stray_edges(primary_ents, secondary_ents)
+      old_coplanar = cache_stray_edges(primary, secondary_to_modify, true, true)
  
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
@@ -243,7 +243,7 @@ module Imp_EneSolidTools
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
             
       # restore the coplanar and unattached edges of the object 
-      #old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
+      old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
  
       # unscale object
       primary.transformation = transP
@@ -306,7 +306,7 @@ module Imp_EneSolidTools
       secondary_ents = entities(secondary_to_modify)
 
       # collect the coplanar and unattached edges of the object 
-      #old_coplanar = cache_stray_edges(primary_ents, secondary_ents)
+      old_coplanar = cache_stray_edges(primary, secondary_to_modify)
  
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
@@ -329,7 +329,7 @@ module Imp_EneSolidTools
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size < 2})
 
       # restore the coplanar and unattached edges of the object 
-      #old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
+      old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
 
       # unscale object
       primary.transformation = transP
@@ -520,35 +520,39 @@ module Imp_EneSolidTools
 
     # Internal: Merges groups/components.
     # Requires both groups/components to be in the same drawing context.
-    def self.move_into(destination, to_move, keep = false)
+    def self.move_into(destination, source, keep = false)
+    
       destination_ents = entities(destination)
-      to_move_def = to_move.is_a?(Sketchup::Group) ? to_move.entities.parent : to_move.definition
+      source_def = source.is_a?(Sketchup::Group) ? source.entities.parent : source.definition
 
-      trans_target = destination.transformation
-      trans_old = to_move.transformation
-
-      trans = trans_old*(trans_target.inverse)
-      trans = trans_target.inverse*trans*trans_target
-
-      temp = destination_ents.add_instance(to_move_def, trans)
-      to_move.erase! unless keep
+      temp = destination_ents.add_instance(source_def, source.transformation * destination.transformation.inverse)
+      source.erase! unless keep
+      
       temp.explode
     end
     
     
     # collect the coplanar and unattached edges of the object
     # these could for example represent drawing details and text the user wishes to keep
-#    def self.cache_stray_edges(primary_ents, secondary_ents)
-#      coplanar = []
-#      find_coplanar_edges(primary_ents).each {|e| coplanar << [e.start.position, e.end.position]}
-#      find_coplanar_edges(secondary_ents).each {|e| coplanar << [e.start.position, e.end.position]}
-#      #collect naked edges too
-#      primary_ents.each {|e| coplanar << [e.start.position, e.end.position] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
-#      secondary_ents.each {|e| coplanar << [e.start.position, e.end.position] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
-#      puts 'coplanar ' + coplanar.size.to_s
-#      puts 'coplanar ' + coplanar.inspect
-#      coplanar
-#    end
+    # the flags offer some granularity 
+    def self.cache_stray_edges(primary, secondary, include_primary = false, include_secondary = false)
+      coplanar = []
+
+      if include_primary
+        primary_ents = entities(primary)
+        find_coplanar_edges(primary_ents).each {|e| coplanar << [e.start.position, e.end.position]}
+        primary_ents.each {|e| coplanar << [e.start.position, e.end.position] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
+      end
+      
+      if include_secondary
+        tr = secondary.transformation * primary.transformation.inverse
+        secondary_ents = entities(secondary)
+        find_coplanar_edges(secondary_ents).each {|e| coplanar << [e.start.position.transform(tr), e.end.position.transform(tr)]}
+        secondary_ents.each {|e| coplanar << [e.start.position.transform(tr), e.end.position.transform(tr)] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
+      end
+      
+     coplanar
+    end
 
     
     # Internal: Find all co-planar edges
@@ -635,8 +639,8 @@ module Imp_EneSolidTools
 		
       intersection_points.compact!
       
-      #erase hits that are too close together at the edge of two faces
-      #not needed? with the Dave Method implemented
+      # Erase hits that are too close together at the edge of two faces.
+      # Not needed? with the Dave Method implemented
       # if a is less than .002 from a+1 then delete a
       #(intersection_points.size - 1).times do |a|
       #  next if (intersection_points[a].x - intersection_points[a+1].x).abs > 0.002
