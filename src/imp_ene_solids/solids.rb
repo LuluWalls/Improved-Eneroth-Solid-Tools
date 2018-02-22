@@ -144,7 +144,6 @@ module Imp_EneSolidTools
       move_into(primary, secondary_to_modify, false)
 
       # Purge edges not binding 2 faces
-      # Would == 0 give the same results?
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size < 2})
      
       # Remove co-planar edges
@@ -227,6 +226,7 @@ module Imp_EneSolidTools
 	    primary_reference_copy.erase!
       
       # Remove faces that exists in both groups and have opposite orientation.
+      #  todo: the function can return two arrays like  fg, eg = parse_input(sel)
       corresponding = find_corresponding_faces(primary, secondary_to_modify, false)
       corresponding.each_with_index { |v, i| i.even? ? to_remove << v : to_remove1 << v }
       
@@ -306,7 +306,7 @@ module Imp_EneSolidTools
       secondary_ents = entities(secondary_to_modify)
 
       # collect the coplanar and unattached edges of the object 
-      old_coplanar = cache_stray_edges(primary, secondary_to_modify)
+      old_coplanar = cache_stray_edges(primary, secondary_to_modify) #does nothing
  
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
@@ -329,7 +329,7 @@ module Imp_EneSolidTools
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size < 2})
 
       # restore the coplanar and unattached edges of the object 
-      old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
+      old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])} #there is nothing to restore
 
       # unscale object
       primary.transformation = transP
@@ -433,29 +433,36 @@ module Imp_EneSolidTools
     def self.intersect_wrapper(ent0, ent1)
       #Intersect twice to get coplanar faces.
       #Copy the intersection geometry to both solids.
+        ents0 = entities(ent0)
+        ents1 = entities(ent1)
+
+        # create a temporary group to hold the result of the intersection
+        temp_group = ent0.parent.entities.add_group
+        temp_group.name = 'temp_group'
+
+        #Only intersect raw geometry at this level of nesting.
+        ents0.intersect_with(false, ent0.transformation, temp_group.entities, IDENTITY, true, ents1.select {|e| e.is_a?(Sketchup::Face)})
+        ents1.intersect_with(false, ent0.transformation.inverse, temp_group.entities, ent0.transformation.inverse, true, ents0.select {|e| e.is_a?(Sketchup::Face)})
+       
+        move_into(ent0, temp_group, true)
+        move_into(ent1, temp_group, false)
       
-      ents0 = entities(ent0)
-      ents1 = entities(ent1)
-
-      # create a temporary group to hold the result of the intersection
-      temp_group = ent0.parent.entities.add_group
-      temp_group.name = 'temp_group'
-
-      #Only intersect raw geometry, save time and avoid unwanted edges.
-      ents0.intersect_with(false, ent0.transformation, temp_group.entities, IDENTITY, true, ents1.to_a.select { |e| [Sketchup::Face, Sketchup::Edge].include?(e.class) })
-      ents1.intersect_with(false, ent0.transformation.inverse, temp_group.entities, ent0.transformation.inverse, true, ents0.to_a.select { |e| [Sketchup::Face, Sketchup::Edge].include?(e.class)})
-     
-      move_into(ent0, temp_group, true)
-      move_into(ent1, temp_group, false)
-	  
-      # fix missing faces. after an intersect_with or move_into() there may be missing faces
-      list = ents0.select { |e| e.is_a?(Sketchup::Edge) && e.faces.size == 0 }
-      list.each{|e| e.find_faces}
+        # fix missing faces. after an intersect_with or move_into() there may be missing faces
+        list = ents0.select { |e| e.is_a?(Sketchup::Edge) && e.faces.size == 0 }
+        list.each{|e| e.find_faces}
+          
+        list = ents1.select { |e| e.is_a?(Sketchup::Edge) && e.faces.size == 0 }
+        list.each{|e| e.find_faces}
         
-      list = ents1.select { |e| e.is_a?(Sketchup::Edge) && e.faces.size == 0 }
-      list.each{|e| e.find_faces}
-      
-
+        # another intersection method would look like this.
+        # with other changes to the outer logic. 
+        # move B into A
+        # intersect A with itself? or with B (to attach loose edges to faces)
+        # ents0 = entities(ent0)
+        # ents1 = entities(ent1)
+        # move_into(ent0, ent1, true)
+        # ents0.intersect_with(false, ent0.transformation, ents0,  ent0.transformation, false, ent1)
+        
     end
 
     # Internal: Find arbitrary point inside face, not on its edge or corner.
@@ -492,6 +499,9 @@ module Imp_EneSolidTools
     #                    direction and nil to skip direction check.
     #
     # Returns an array of faces, every second being in each drawing context.
+    #
+     
+    
     def self.find_corresponding_faces(ent0, ent1, same_orientation)
       faces = []
       entities(ent0).each do |f0|
@@ -504,8 +514,11 @@ module Imp_EneSolidTools
           next unless normal0.parallel?(normal1)
           points1 = f1.vertices.map { |v| v.position.transform(ent1.transformation) }
           
-          # this was way too simple!!! We needed a two way comparison
+          # this code was way too simple. We needed a two way comparison
           #next unless points0.all? { |v| points1.include?(v) }
+          
+          # Could this faster if we used some sort of lookup?
+          # build a table of points..., polygonmesh
           next unless points0.all? { |v| points1.include?(v) } && points1.all? { |v| points0.include?(v) }
           unless same_orientation.nil?
             next if normal0.samedirection?(normal1) != same_orientation
