@@ -1,5 +1,5 @@
 # Eneroth solid Tools
-Sketchup.send_action(CMD_RUBY_CONSOLE) 
+# Sketchup.send_action(CMD_RUBY_CONSOLE) 
 
 module Imp_EneSolidTools
 
