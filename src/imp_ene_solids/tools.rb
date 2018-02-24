@@ -42,7 +42,7 @@ module Imp_EneSolidTools
     def self.perform_or_activate
       model = Sketchup.active_model
       selection = model.selection
-      if selection.size > 1 && selection.all? { |e| Solids.is_solid?(e) }
+      if selection.length > 1 && selection.all? { |e| Solids.is_solid?(e) }
 
         # Sort by bounding box volume since no order is given.
         # To manually define the what solid to modify and what to modify with
@@ -200,7 +200,7 @@ module Imp_EneSolidTools
       # make existing selection the @primary array
       model = Sketchup.active_model
       selection = model.selection
-      if selection.size > 0
+      if selection.length > 0
         @primary = selection.to_a 
         @primary.reject! {|ent| ![Sketchup::Group, Sketchup::ComponentInstance].include?(ent.class)}
         Sketchup.status_text = self.class::STATUS_SECONDARY
@@ -247,7 +247,7 @@ module Imp_EneSolidTools
       case key
         when COPY_MODIFIER_KEY, CONSTRAIN_MODIFIER_KEY
           @multisub_state = 0
-          if @primary.size != 0 
+          if @primary.length != 0 
             @cursor = @cursor_secondary
             Sketchup.status_text = self.class::STATUS_SECONDARY
             onSetCursor() #update cursor
@@ -270,7 +270,7 @@ module Imp_EneSolidTools
       #Add and remove objects from the @primary array
       case @multisub_state
         when 0 
-          if @primary.size == 0 
+          if @primary.length == 0 
             @primary << picked 
             Sketchup.status_text = self.class::STATUS_SECONDARY
             @cursor = @cursor_secondary
@@ -295,7 +295,7 @@ module Imp_EneSolidTools
       end #end case
 
       # we have clicked on the secondary object
-      # Case == 0 and @primary.size != 0
+      # Case == 0 and @primary.length != 0
       secondary = picked
         
       begin
@@ -365,14 +365,25 @@ module Imp_EneSolidTools
     end
 
     def resume(view)
-      Sketchup.status_text = @primary.size == 0 ? self.class::STATUS_PRIMARY : self.class::STATUS_SECONDARY
+      Sketchup.status_text = @primary.length == 0 ? self.class::STATUS_PRIMARY : self.class::STATUS_SECONDARY
     end
 
     def ene_tool_cycler_icon
       File.join(PLUGIN_DIR, "images", "#{self.class::METHOD_NAME.to_s}.svg")
     end
 
-    def getMenu(menu, flags, x, y, view)
+    if Sketchup.version.to_i < 15
+      # Compatible with SketchUp 2014 and older:
+      def getMenu(menu)
+        build_menu(menu)
+      end
+    else
+      def getMenu(menu, flags, x, y, view)
+        build_menu(menu)
+      end
+    end
+    
+    def build_menu(menu)
       item = menu.add_item('Cut Subcomponents') { update_settings(:cut_sub)}
       status = menu.set_validation_proc(item)  {@settings[:cut_sub] ? MF_CHECKED : MF_UNCHECKED}
       
@@ -386,20 +397,38 @@ module Imp_EneSolidTools
       status = menu.set_validation_proc(item)  {@settings[:unique] ? MF_CHECKED : MF_UNCHECKED}
     end
     
-    def get_settings()
-      @settings = Sketchup.read_default("SW::Expose", "settings",  {:cut_sub => true,:hide_sec => true,:paint => false,:unique => true})
-    end
+    if Sketchup.version.to_i > 8 # I don't really know at which version  preferences changed
+      def get_settings()
+        @settings = Sketchup.read_default("LL::Expose", "settings",  {:cut_sub => true,:hide_sec => true,:paint => false,:unique => true})
+      end
+      
+      def update_settings(key)
+        @settings[key] = !@settings[key]
+        Sketchup.write_default("LL::Expose", "settings", @settings)
+      end
+      
+      def set_settings() # if we need to overwrite the saved settings paste this is the ruby console
+        @settings =  {:cut_sub => true,:hide_sec => true,:paint => false,:unique => true}
+        Sketchup.write_default("LL::Expose", "settings", @settings)
+      end
+    else
     
-    def update_settings(key)
-      @settings[key] = !@settings[key]
-      Sketchup.write_default("SW::Expose", "settings", @settings)
-    end
-    
-    def set_settings() # if we need to overwrite the saved settings paste this is the ruby console
-      @settings =  {:cut_sub => true,:hide_sec => true,:paint => false,:unique => true}
-      Sketchup.write_default("SW::Expose", "settings", @settings)
-    end
+     #this works in SU 8
+     def get_settings()
+        @settings = eval(Sketchup.read_default("LL::Expose", "settings"))
+        set_settings() if !@settings.class === Hash 
+      end
 
+      def update_settings(key)
+        @settings[key] = !@settings[key]
+        Sketchup.write_default("LL::Expose", "settings", @settings.inspect)
+      end
+      
+      def set_settings() # if we need to overwrite the saved settings paste this is the ruby console
+        @settings =  {:cut_sub => false,:hide_sec => true,:paint => false,:unique => true}
+        Sketchup.write_default("LL::Expose", "settings", @settings.inspect)
+      end
+    end
     
     private
 

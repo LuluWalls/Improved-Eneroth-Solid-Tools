@@ -130,7 +130,7 @@ module Imp_EneSolidTools
 
       # Remove faces that exists in both groups and have opposite orientation.
       corresponding = find_corresponding_faces(primary, secondary_to_modify, true)
-      corresponding.each_with_index { |v, i| i.even? ? to_remove << v : to_remove1 << v }
+      corresponding.each_with_index { |v, i| (i % 2 == 0) ? to_remove << v : to_remove1 << v }
       primary_ents.erase_entities(to_remove)
       secondary_ents.erase_entities(to_remove1)
 
@@ -144,7 +144,7 @@ module Imp_EneSolidTools
       move_into(primary, secondary_to_modify, false)
 
       # Purge edges not binding 2 faces
-      primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size < 2})
+      primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.length < 2})
      
       # Remove co-planar edges
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
@@ -228,7 +228,7 @@ module Imp_EneSolidTools
       # Remove faces that exists in both groups and have opposite orientation.
       #  todo: the function can return two arrays like  fg, eg = parse_input(sel)
       corresponding = find_corresponding_faces(primary, secondary_to_modify, false)
-      corresponding.each_with_index { |v, i| i.even? ? to_remove << v : to_remove1 << v }
+      corresponding.each_with_index { |v, i| (i % 2 == 0) ? to_remove << v : to_remove1 << v }
       
       primary_ents.erase_entities(to_remove)
       secondary_ents.erase_entities(to_remove1)
@@ -237,7 +237,7 @@ module Imp_EneSolidTools
       move_into(primary, secondary_to_modify, false)
  
       # Purge edges naked edges
-      primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size == 0})
+      primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.length == 0})
  
       # Remove co-planar edges
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
@@ -326,7 +326,7 @@ module Imp_EneSolidTools
       move_into(primary, secondary_to_modify, false)
 	  
       # Purge edges not binding 2 faces
-      primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.size < 2})
+      primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.length < 2})
 
       # restore the coplanar and unattached edges of the object 
       old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])} #there is nothing to restore
@@ -448,20 +448,11 @@ module Imp_EneSolidTools
         move_into(ent1, temp_group, false)
       
         # fix missing faces. after an intersect_with or move_into() there may be missing faces
-        list = ents0.select { |e| e.is_a?(Sketchup::Edge) && e.faces.size == 0 }
+        list = ents0.select { |e| e.is_a?(Sketchup::Edge) && e.faces.length == 0 }
         list.each{|e| e.find_faces}
           
-        list = ents1.select { |e| e.is_a?(Sketchup::Edge) && e.faces.size == 0 }
+        list = ents1.select { |e| e.is_a?(Sketchup::Edge) && e.faces.length == 0 }
         list.each{|e| e.find_faces}
-        
-        # another intersection method would look like this.
-        # with other changes to the outer logic. 
-        # move B into A
-        # intersect A with itself? or with B (to attach loose edges to faces)
-        # ents0 = entities(ent0)
-        # ents1 = entities(ent1)
-        # move_into(ent0, ent1, true)
-        # ents0.intersect_with(false, ent0.transformation, ents0,  ent0.transformation, false, ent1)
         
     end
 
@@ -554,14 +545,14 @@ module Imp_EneSolidTools
       if include_primary
         primary_ents = entities(primary)
         find_coplanar_edges(primary_ents).each {|e| coplanar << [e.start.position, e.end.position]}
-        primary_ents.each {|e| coplanar << [e.start.position, e.end.position] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
+        primary_ents.each {|e| coplanar << [e.start.position, e.end.position] if e.is_a?(Sketchup::Edge) && e.faces.length == 0}
       end
       
       if include_secondary
         tr = secondary.transformation * primary.transformation.inverse
         secondary_ents = entities(secondary)
         find_coplanar_edges(secondary_ents).each {|e| coplanar << [e.start.position.transform(tr), e.end.position.transform(tr)]}
-        secondary_ents.each {|e| coplanar << [e.start.position.transform(tr), e.end.position.transform(tr)] if e.is_a?(Sketchup::Edge) && e.faces.size == 0}
+        secondary_ents.each {|e| coplanar << [e.start.position.transform(tr), e.end.position.transform(tr)] if e.is_a?(Sketchup::Edge) && e.faces.length == 0}
       end
       
      coplanar
@@ -572,7 +563,7 @@ module Imp_EneSolidTools
     def self.find_coplanar_edges(ents)
       ents.select do |e|
         next unless e.is_a?(Sketchup::Edge)
-        next unless e.faces.size == 2
+        next unless e.faces.length == 2
         e.faces[0].normal == e.faces[1].normal
       end
    end
@@ -655,7 +646,7 @@ module Imp_EneSolidTools
       # Erase hits that are too close together at the edge of two faces.
       # Not needed? with the Dave Method implemented
       # if a is less than .002 from a+1 then delete a
-      #(intersection_points.size - 1).times do |a|
+      #(intersection_points.length - 1).times do |a|
       #  next if (intersection_points[a].x - intersection_points[a+1].x).abs > 0.002
       #  next if (intersection_points[a].y - intersection_points[a+1].y).abs > 0.002
       #  next if (intersection_points[a].z - intersection_points[a+1].z).abs > 0.002
@@ -665,7 +656,8 @@ module Imp_EneSolidTools
        
        
       intersection_points = intersection_points.inject([]){ |a, p0| a.any?{ |p| p == p0 } ? a : a << p0 }
-      intersection_points.size.odd?
+ #    intersection_points.length.odd?
+      intersection_points.length % 2 == 1
     end
     
     
@@ -675,14 +667,14 @@ module Imp_EneSolidTools
     #
     # container - The Group or ComponentInstance to test.
     #
-    # Returns nil if not a Group or Component || if entities.size == 0
+    # Returns nil if not a Group or Component || if entities.length == 0
     #      then true/false if each edges is attached to an even number of faces
     def self.is_solid?(container)
       return unless [Sketchup::Group, Sketchup::ComponentInstance].include?(container.class)
       ents = entities(container)
       # return nil if the container is empty
-      return if ents.size == 0
-      !ents.any? { |e| e.is_a?(Sketchup::Edge) && e.faces.size.odd? }
+      return if ents.length == 0
+      !ents.any? { |e| e.is_a?(Sketchup::Edge) && (e.faces.length % 2 == 1)}
     end
     
   end
