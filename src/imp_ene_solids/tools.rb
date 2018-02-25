@@ -80,7 +80,9 @@ module Imp_EneSolidTools
 
     def activate
       @ph = Sketchup.active_model.active_view.pick_helper
-      @cursor = UI.create_cursor(File.join(PLUGIN_DIR, "images", self.class::CURSOR_FILENAME), 2, 2)
+      @cursor_normal = UI.create_cursor(File.join(PLUGIN_DIR, "images", self.class::CURSOR_FILENAME), 2, 2)
+      @cursor_wait = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_wait.png"), 2, 2)
+      @cursor = @cursor_normal
       @@active_tool_class = self.class
       reset
     end
@@ -101,12 +103,17 @@ module Imp_EneSolidTools
       else
         return if picked == @primary
         secondary = picked
+        @cursor = @cursor_wait
+        onSetCursor() #update cursor
+        
         view.model.start_operation(self.class::OPERATOR_NAME, true)
         if !Solids.send(self.class::METHOD_NAME, @primary, secondary, false)
           UI.messagebox(NOT_SOLID_ERROR)
           reset
         end
         view.model.commit_operation
+        @cursor = @cursor_normal
+        onSetCursor() #update cursor
       end
     end
     
@@ -196,6 +203,7 @@ module Imp_EneSolidTools
       @cursor_secondary = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_multisub_secondary.png"), 2, 2)
       @cursor_plus = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_multisub_plus.png"), 2, 2)
       @cursor_plus_minus = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_multisub_plus_minus.png"), 2, 2)
+      @cursor_wait = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_wait.png"), 2, 2)
       
       # make existing selection the @primary array
       model = Sketchup.active_model
@@ -297,6 +305,8 @@ module Imp_EneSolidTools
       # we have clicked on the secondary object
       # Case == 0 and @primary.length != 0
       secondary = picked
+      @cursor = @cursor_wait
+      onSetCursor() #update cursor
         
       begin
         view.model.start_operation(self.class::OPERATOR_NAME, true)
@@ -322,6 +332,8 @@ module Imp_EneSolidTools
 
       # clean up items that were totally removed by the subtract operation
       @primary.reject! {|ent| ent.deleted?}
+      @cursor = @cursor_secondary
+      onSetCursor() #update cursor
     end
 
     def onMouseMove(flags, x, y, view)

@@ -53,7 +53,7 @@ module Imp_EneSolidTools
 
     # Extension Warehouse doesn't allow hosting this extension unless it's
     # limited to SketchUp Pro since it replicates a Pro feature.
-    if Sketchup.is_pro?
+    if true # Sketchup.is_pro?
 
       menu = UI.menu("Tools").add_submenu(EXTENSION.name)
       item = menu.add_item("Union") { UnionTool.perform_or_activate }

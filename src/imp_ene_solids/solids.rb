@@ -130,7 +130,7 @@ module Imp_EneSolidTools
 
       # Remove faces that exists in both groups and have opposite orientation.
       corresponding = find_corresponding_faces(primary, secondary_to_modify, true)
-      corresponding.each_with_index { |v, i| (i % 2 == 0) ? to_remove << v : to_remove1 << v }
+      corresponding.each_with_index { |v, i| ((i & 0x01) == 0) ? to_remove << v : to_remove1 << v }
       primary_ents.erase_entities(to_remove)
       secondary_ents.erase_entities(to_remove1)
 
@@ -228,7 +228,7 @@ module Imp_EneSolidTools
       # Remove faces that exists in both groups and have opposite orientation.
       #  todo: the function can return two arrays like  fg, eg = parse_input(sel)
       corresponding = find_corresponding_faces(primary, secondary_to_modify, false)
-      corresponding.each_with_index { |v, i| (i % 2 == 0) ? to_remove << v : to_remove1 << v }
+      corresponding.each_with_index { |v, i| ((i & 0x01) == 0) ? to_remove << v : to_remove1 << v }
       
       primary_ents.erase_entities(to_remove)
       secondary_ents.erase_entities(to_remove1)
@@ -644,7 +644,7 @@ module Imp_EneSolidTools
       intersection_points.compact!
       
       # Erase hits that are too close together at the edge of two faces.
-      # Not needed? with the Dave Method implemented
+      # Not needed(?) with the Dave Method implemented
       # if a is less than .002 from a+1 then delete a
       #(intersection_points.length - 1).times do |a|
       #  next if (intersection_points[a].x - intersection_points[a+1].x).abs > 0.002
@@ -657,7 +657,7 @@ module Imp_EneSolidTools
        
       intersection_points = intersection_points.inject([]){ |a, p0| a.any?{ |p| p == p0 } ? a : a << p0 }
  #    intersection_points.length.odd?
-      intersection_points.length % 2 == 1
+      (intersection_points.length & 0x01) == 1
     end
     
     
@@ -674,7 +674,7 @@ module Imp_EneSolidTools
       ents = entities(container)
       # return nil if the container is empty
       return if ents.length == 0
-      !ents.any? { |e| e.is_a?(Sketchup::Edge) && (e.faces.length % 2 == 1)}
+      !ents.any? { |e| e.is_a?(Sketchup::Edge) && ((e.faces.length & 0x01) == 1)}
     end
     
   end
