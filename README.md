@@ -38,3 +38,6 @@ The options are:
   
  
  
+  ![Alt text](src/imp_ene_solids/images/timber_slice.jpg?raw=true "Title")
+
+ 
