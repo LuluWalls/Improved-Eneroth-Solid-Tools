@@ -37,9 +37,11 @@ The options are:
   ![Alt text](src/imp_ene_solids/images/demo.gif?raw=true "Title")
   
  
- Lulu, why would you go to all of this trouble? someone asks.
  
- Well, I says, I wanted to make this type of presentation.
+ 
+ Lulu, why would you go to all of this trouble?
+ 
+ Well, I wanted to make a presentation like this
  
  
   ![Alt text](src/imp_ene_solids/images/timber_slice.jpg?raw=true "Title")
