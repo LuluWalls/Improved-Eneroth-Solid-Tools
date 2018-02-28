@@ -1,7 +1,7 @@
 # Improved-Eneroth-Solid-Tools
 An updated version of eneroth-solid-tools: https://github.com/Eneroth3/Eneroth-Solid-Tools by me.
 
-I'm fairly certain the original solid tools work in the same manner as the origial design. We have of course 'fixed' may of the shortcomings of the earlier algorithms.
+I'm fairly certain the original solid tools work in the same manner as the origial design. We have of course 'fixed' many of the shortcomings of the earlier algorithms, but not all. And there continue to be issues with tiny faces.
 
 ## About the new Multi-Subtract tool ![Alt text](src/imp_ene_solids/images/cursor_multisub.png?raw=true "Title")
 The multi-subtract tool is similar to the original tools but differs in that it allows the user to select multiple objects to be 'cut' with a secondary object.
