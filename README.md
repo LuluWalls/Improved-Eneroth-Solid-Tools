@@ -15,6 +15,7 @@ Click the multi-subtract toolbar button ![Alt text](src/imp_ene_solids/images/cu
  - ![Alt text](src/imp_ene_solids/images/cursor_multisub_plus.png?raw=true "Title")add to the primary collection by holding down the Alt/Option on Mac, Ctrl on PC while clicking on an object
  - ![Alt text](src/imp_ene_solids/images/cursor_multisub_plus_minus.png?raw=true "Title")add or subtract to/from the primary collection by holding down the Shift key while clicking on an object
  - ![Alt text](src/imp_ene_solids/images/cursor_multisub_primary.png?raw=true "Title")choose the first item to add to the primary collection
+ - control-A to select all
  
 Click on the secondary object to perform the subtraction ![Alt text](src/imp_ene_solids/images/cursor_multisub_secondary.png?raw=true "Title")
 
