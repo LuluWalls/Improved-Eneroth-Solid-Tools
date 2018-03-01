@@ -40,7 +40,7 @@ The options are:
  
  
  
- Lulu, why would you go to all of this trouble?
+Hey Lulu, why would you go to all of this trouble?
  
  Well, I wanted to make a presentation like this
  
