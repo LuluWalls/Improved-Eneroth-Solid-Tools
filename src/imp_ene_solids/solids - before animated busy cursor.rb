@@ -78,8 +78,7 @@ module Imp_EneSolidTools
     # Returns true if result is a solid, false if something went wrong.
 
     def self.subtract(primary, secondary, wrap_in_operator = true, keep_secondary = false, scale = 1000, paint = nil)
-      @busy_cursors || init_busy_cursors()
-      rc()
+      
       #Check if both groups/components are solid, and that there are edges
       return if !entities(primary).any? {|e| e.is_a?(Sketchup::Edge)} #
       return if !is_solid?(primary) || !is_solid?(secondary)
@@ -119,44 +118,44 @@ module Imp_EneSolidTools
       #grab the entities collections
       primary_ents = entities(primary)
       secondary_ents = entities(secondary_to_modify)
-      rc()
+      
       # collect the coplanar and unattached edges of the object 
       old_coplanar = cache_stray_edges(primary, secondary_to_modify, true)
-      rc()
+
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
-      rc()
+      
       # Remove faces in primary that are inside the secondary and faces in
       # secondary that are outside primary.
       to_remove = find_faces_inside_outside(primary, secondary_reference_copy, true)
       to_remove1 = find_faces_inside_outside(secondary_to_modify, primary_reference_copy, false)
       secondary_reference_copy.erase!
 	    primary_reference_copy.erase!
-      rc()
+
       # Remove faces that exists in both groups and have opposite orientation.
       corresponding = find_corresponding_faces(primary, secondary_to_modify, true)
       corresponding.each_with_index { |v, i| ((i & 0x01) == 0) ? to_remove << v : to_remove1 << v }
       primary_ents.erase_entities(to_remove)
       secondary_ents.erase_entities(to_remove1)
-      rc()
+
       # Reverse all faces in secondary
       secondary_ents.each { |f| f.reverse! if f.is_a? Sketchup::Face }
-      rc()   
+      
       # paint the cut faces if paint defined
       secondary_ents.each {|f| f.material = paint if f.is_a? Sketchup::Face} if paint 
-      rc()     
+      
       # combine the two objects
       move_into(primary, secondary_to_modify, false)
-      rc()
+
       # Purge edges not binding 2 faces
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.length < 2})
-      rc()    
+     
       # Remove co-planar edges
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
-      rc()    
+      
       # restore the coplanar and unattached edges of the object 
       old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
-      rc()   
+      
       # unscale object
       primary.transformation = transP
       
@@ -182,7 +181,6 @@ module Imp_EneSolidTools
     # Returns true if result is a solid, false if something went wrong.
 =end
     def self.union(primary, secondary, wrap_in_operator = true)
-      @busy_cursors || init_busy_cursors()
       #Check if both groups/components are solid.
       return if !is_solid?(primary) || !is_solid?(secondary)
       primary.model.start_operation("Union", true) if wrap_in_operator
@@ -192,7 +190,7 @@ module Imp_EneSolidTools
       # Components on the other hand should off course not be made unique here.
       # That is up to the user to do manually if they want to.
       primary.make_unique if primary.is_a?(Sketchup::Group)
-rc()
+
       # scale every thing by 1000
       scale = 1000
       transP = primary.transformation
@@ -210,47 +208,47 @@ rc()
       secondary_to_modify = primary.parent.entities.add_group
 	    secondary_to_modify.name = 'secondary_to_modify'
       move_into(secondary_to_modify, secondary, false)
-      rc()     
+      
       primary_reference_copy = primary.parent.entities.add_group
 	    primary_reference_copy.name = 'primary_reference_copy'
       move_into(primary_reference_copy, primary, true)
-      rc()    
+      
       #grab the entities collections
       primary_ents = entities(primary)
       secondary_ents = entities(secondary_to_modify)
 
       # collect the coplanar and unattached edges of the object 
       old_coplanar = cache_stray_edges(primary, secondary_to_modify, true, true)
-      rc()
+ 
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
-      rc()
+
       # Remove faces inside primary and inside secondary
       to_remove = find_faces_inside_outside(primary, secondary_reference_copy, true)
       to_remove1 = find_faces_inside_outside(secondary_to_modify, primary_reference_copy, true)
 	    secondary_reference_copy.erase!
 	    primary_reference_copy.erase!
-      rc()    
+      
       # Remove faces that exists in both groups and have opposite orientation.
       #  todo: the function can return two arrays like  fg, eg = parse_input(sel)
       corresponding = find_corresponding_faces(primary, secondary_to_modify, false)
       corresponding.each_with_index { |v, i| ((i & 0x01) == 0) ? to_remove << v : to_remove1 << v }
-      rc()    
+      
       primary_ents.erase_entities(to_remove)
       secondary_ents.erase_entities(to_remove1)
-      rc()
+
       # combine the two objects
       move_into(primary, secondary_to_modify, false)
-      rc()
+ 
       # Purge edges naked edges
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.length == 0})
-      rc()
+ 
       # Remove co-planar edges
       primary_ents.erase_entities(find_coplanar_edges(primary_ents))
-      rc()          
+            
       # restore the coplanar and unattached edges of the object 
       old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])}
-      rc()
+ 
       # unscale object
       primary.transformation = transP
       
@@ -275,7 +273,6 @@ rc()
     # Returns true if result is a solid, false if something went wrong.
 =end
     def self.intersect(primary, secondary, wrap_in_operator = true)
-      @busy_cursors || init_busy_cursors()
       #Check if both groups/components are solid.
       return if !is_solid?(primary) || !is_solid?(secondary)
       primary.model.start_operation("Intersect", true) if wrap_in_operator
@@ -285,7 +282,7 @@ rc()
       # Components on the other hand should off course not be made unique here.
       # That is up to the user to do manually if they want to.
       primary.make_unique if primary.is_a?(Sketchup::Group)
-      rc()
+
       # scale every thing by 1000
       scale = 1000
       transP = primary.transformation
@@ -299,45 +296,45 @@ rc()
       secondary_reference_copy = primary.parent.entities.add_group
 	    secondary_reference_copy.name = 'secondary_reference_copy'
       move_into(secondary_reference_copy, secondary, true)
-      rc()
+
       secondary_to_modify = primary.parent.entities.add_group
 	    secondary_to_modify.name = 'secondary_to_modify'
       move_into(secondary_to_modify, secondary, false)
-      rc()     
+      
       primary_reference_copy = primary.parent.entities.add_group
 	    primary_reference_copy.name = 'primary_reference_copy'
       move_into(primary_reference_copy, primary, true)
-      rc()
+
       #grab the entities collections
       primary_ents = entities(primary)
       secondary_ents = entities(secondary_to_modify)
 
       # collect the coplanar and unattached edges of the object 
       old_coplanar = cache_stray_edges(primary, secondary_to_modify) #does nothing
-      rc()
+ 
       # intersect A into B, and B into A
       intersect_wrapper(primary, secondary_to_modify)
-      rc()  
+  
       # Remove faces in primary that are outside of the secondary
       # and faces in secondary that are outside primary.
       to_remove = find_faces_inside_outside(primary, secondary_reference_copy, false)
       to_remove1 = find_faces_inside_outside(secondary_to_modify, primary_reference_copy, false)
       primary_ents.erase_entities(to_remove)
       secondary_ents.erase_entities(to_remove1)
-      rc()     
+      
       # done with these!
 	    secondary_reference_copy.erase!
 	    primary_reference_copy.erase!
-      rc()	  
+	  
       # combine the two objects
       move_into(primary, secondary_to_modify, false)
-      rc()  
+	  
       # Purge edges not binding 2 faces
       primary_ents.erase_entities(primary_ents.select {|e| e.is_a?(Sketchup::Edge) && e.faces.length < 2})
-      rc()
+
       # restore the coplanar and unattached edges of the object 
       old_coplanar.each {|e| primary_ents.add_edges(e[0], e[1])} #there is nothing to restore
-      rc()
+
       # unscale object
       primary.transformation = transP
       
@@ -359,7 +356,6 @@ rc()
 
     def self.multisub(primary, secondary, settings)
       @progress = 'Working |'
-      @busy_cursors || init_busy_cursors()
       
       # Create a material to apply to the cut faces if settings[:paint]
       # I can imagine painting cut faces with cross hatching, etc.
@@ -393,8 +389,6 @@ rc()
       primary.each do |target|
         Sketchup.status_text = @progress
         @progress << '|'
-        rc()
-        
         # running with scissors?
         next if target == secondary 
         # quick but dirty exclude
@@ -417,30 +411,9 @@ rc()
           child.transformation = tr_save 
         end
       end
-    end    
+    end     
+ 
 
-    # load the four quadrant cursors that show when we are busy computing
-    def self.init_busy_cursors
-      @busy_cursors = []
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ1.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ2.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ3.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ4.png"), 2, 2)
-      @cursor_index = 0
-      @time = Time.now
-    end
-    
-    # update the busy cursor every 0.X seconds
-    def self.rc()
-      # Does this work on a Mac?
-      if Time.now > @time + 0.1
-        @cursor_index = (@cursor_index + 1) % 4
-        UI.set_cursor(@busy_cursors[@cursor_index])
-        @time = Time.now
-      end  
-    end
-
-      
     # Internal: Get the Entities object for either a Group or ComponentInstance.
     # SU 2014 and lower doesn't support Group#definition.
     #
@@ -470,23 +443,21 @@ rc()
         # create a temporary group to hold the result of the intersection
         temp_group = ent0.parent.entities.add_group
         temp_group.name = 'temp_group'
-        rc()
+
         #Only intersect raw geometry at this level of nesting.
         ents0.intersect_with(false, ent0.transformation, temp_group.entities, IDENTITY, true, ents1.select {|e| e.is_a?(Sketchup::Face)})
-        rc()
         ents1.intersect_with(false, ent0.transformation.inverse, temp_group.entities, ent0.transformation.inverse, true, ents0.select {|e| e.is_a?(Sketchup::Face)})
-        rc()
-        
+       
         move_into(ent0, temp_group, true)
         move_into(ent1, temp_group, false)
-        rc()
+      
         # fix missing faces. after an intersect_with or move_into() there may be missing faces
         list = ents0.select { |e| e.is_a?(Sketchup::Edge) && e.faces.length == 0 }
         list.each{|e| e.find_faces}
-        rc()  
+          
         list = ents1.select { |e| e.is_a?(Sketchup::Edge) && e.faces.length == 0 }
         list.each{|e| e.find_faces}
-        rc()
+        
     end
 
     # Internal: Find arbitrary point inside face, not on its edge or corner.
