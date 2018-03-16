@@ -101,11 +101,12 @@ module Imp_EneSolidTools
         Sketchup.status_text = self.class::STATUS_SECONDARY
         @primary = picked
       else
+      #### wrap this in a rescue clause
         return if picked == @primary
         secondary = picked
         @cursor = @cursor_wait
         onSetCursor() #update cursor
-        
+        Sketchup.status_text = 'Working'
         view.model.start_operation(self.class::OPERATOR_NAME, true)
         if !Solids.send(self.class::METHOD_NAME, @primary, secondary, false)
           UI.messagebox(NOT_SOLID_ERROR)
@@ -114,6 +115,7 @@ module Imp_EneSolidTools
         view.model.commit_operation
         @cursor = @cursor_normal
         onSetCursor() #update cursor
+        Sketchup.status_text = self.class::STATUS_SECONDARY
       end
     end
     
@@ -165,6 +167,7 @@ module Imp_EneSolidTools
       Sketchup.active_model.selection.clear
       Sketchup.status_text = self.class::STATUS_PRIMARY
       @primary = nil
+      @mouse_over = nil
     end
   end #BaseTool
   
@@ -309,6 +312,7 @@ module Imp_EneSolidTools
       onSetCursor() #update cursor
         
       begin
+        Sketchup.status_text = 'Working'
         view.model.start_operation(self.class::OPERATOR_NAME, true)
         if !@swap_ps
           Solids.send(self.class::METHOD_NAME, @primary, secondary, @settings)
@@ -320,7 +324,7 @@ module Imp_EneSolidTools
         end
         
         view.model.commit_operation
-        UI.beep #done
+        #UI.beep #done
         
       rescue => e
         view.model.abort_operation
