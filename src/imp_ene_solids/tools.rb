@@ -206,7 +206,7 @@ module Imp_EneSolidTools
       @cursor_secondary = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_multisub_secondary.png"), 2, 2)
       @cursor_plus = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_multisub_plus.png"), 2, 2)
       @cursor_plus_minus = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_multisub_plus_minus.png"), 2, 2)
-      @cursor_wait = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_wait.png"), 2, 2)
+      @cursor_wait = UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ1.png"), 2, 2)
       
       # make existing selection the @primary array
       model = Sketchup.active_model

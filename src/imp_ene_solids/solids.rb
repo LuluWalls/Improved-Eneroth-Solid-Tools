@@ -441,43 +441,71 @@ module Imp_EneSolidTools
       end
     end    
 
-    # load the four quadrant cursors that we display while we are busy computing
+    # load the four quadrant cursors that we will animate while we are busy
     def self.init_busy_cursors
       @busy_cursors = []
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ1.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ2.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ3.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ4.png"), 2, 2)
+      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ1.png"), 2, 2)
+      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ2.png"), 2, 2)
+      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ3.png"), 2, 2)
+      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ4.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ1.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ2.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ3.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ4.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ5.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ6.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ7.png"), 2, 2)
+      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ8.png"), 2, 2)
       @cursor_index = 0
       @time = Time.now
     end
     
-
     # This set of methods animates the cursor
-    # We probably need to wrap all of the calls to solids.rb with
-    # a rescue clause to stop a spinning cursor if something goes wrong
+    # A signal will interrupt any ruby code (running or sleeping)
+    # and will fire *after* long calls into the Sketchup API code
+    #
+    # We have wrapped all of the calls to solids.rb with an ensure to 
+    # stop the spinning cursor if an exception occurs
     
-    # method to Catch the process kill signal
-    Signal.trap("INT") do 
-      #puts 'Cursor Thread Int'
-      @cursor_index = (@cursor_index + 1) % 4
-      UI.set_cursor(@busy_cursors[@cursor_index])
+    # Trap SIGINT siganl in the main thread since
+    # only the main thread can access the UI.set_cursor
+    # during an active model operation
+    if !@old_signal_handler
+      puts 'Improved ene solids.rb - adding Signal trap SIGINT'
+      @old_signal_handler = Signal.trap("INT") do 
+        #puts 'Cursor Thread Interrupt'
+        if @cursor_do 
+          @cursor_index = (@cursor_index + 1) % 8
+          UI.set_cursor(@busy_cursors[@cursor_index])
+          @cursor_do = nil
+        else
+          # try to call the chain of handlers if I have no work to do
+          # https://stackoverflow.com/questions/29568298/run-code-when-signal-is-sent-but-do-not-trap-the-signal-in-ruby
+          # this might be total BS, this has not been debugged
+          @old_signal_handler.call if @old_signal_handler.respond_to?(:call)
+        end
+      end
     end
     
     def self.start_cursor()
       #puts 'start cursor thread'
+      @time = Time.now
       @cursor_thread = Thread.new {cursor_worker_thread()}
+      @cursor_thread.priority = 4
     end
     
     def self.stop_cursor()
        #puts 'stop cursor thread'
-       @cursor_thread.exit #kill the worker thread
+       #terminate the worker thread
+       puts 'Improved Ene solid tools Execution time = ' + (Time.now - @time).to_s
+       @cursor_thread.exit 
     end
     
     def self.cursor_worker_thread()
       while true
         sleep(0.1)
-        #signal a cursor change
+        #send the INT signal to the main thread
+        @cursor_do = true
         Process.kill("INT", Process.pid)
       end 
     end
