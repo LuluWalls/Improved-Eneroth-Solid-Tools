@@ -4,6 +4,14 @@
 # solid tools by ThomThom 
 # solidsolver by TIG
 
+#loaded the animated beachball cursor code (if not already installed) 
+if !defined? Lulu::Beachballs
+  begin
+    require(File.join(File.dirname(__FILE__), "Lulu_Beachballs_core"))
+  rescue LoadError
+  end
+end
+
 module Imp_EneSolidTools
 
   # Various solid operations.
@@ -78,8 +86,7 @@ module Imp_EneSolidTools
     # Returns true if result is a solid, false if something went wrong.
 
     def self.subtract(primary, secondary, wrap_in_operator = true, keep_secondary = false, scale = 1000, paint = nil)
-      @busy_cursors || init_busy_cursors()
-      @is_multisub || start_cursor()
+      @is_multisub || Lulu::Beachballs.start() if defined? Lulu::Beachballs
       
       #Check if both groups/components are solid, and that there are edges
       return if !entities(primary).any? {|e| e.is_a?(Sketchup::Edge)} #
@@ -164,7 +171,7 @@ module Imp_EneSolidTools
       primary.model.commit_operation if wrap_in_operator
       
     ensure
-      @is_multisub || stop_cursor()
+      @is_multisub || Lulu::Beachballs.stop() if defined? Lulu::Beachballs
       return is_solid?(primary)
     end
 
@@ -186,8 +193,8 @@ module Imp_EneSolidTools
     # Returns true if result is a solid, false if something went wrong.
 =end
     def self.union(primary, secondary, wrap_in_operator = true)
-      @busy_cursors || init_busy_cursors()
-      start_cursor()
+      Lulu::Beachballs.start() if defined? Lulu::Beachballs
+      
       #Check if both groups/components are solid.
       return if !is_solid?(primary) || !is_solid?(secondary)
       primary.model.start_operation("Union", true) if wrap_in_operator
@@ -261,8 +268,8 @@ module Imp_EneSolidTools
       
       primary.model.commit_operation if wrap_in_operator
     ensure 
-      stop_cursor()
-     return is_solid?(primary)
+      Lulu::Beachballs.stop() if defined? Lulu::Beachballs
+      return is_solid?(primary)
     end
 
 
@@ -282,8 +289,7 @@ module Imp_EneSolidTools
     # Returns true if result is a solid, false if something went wrong.
 =end
     def self.intersect(primary, secondary, wrap_in_operator = true)
-      @busy_cursors || init_busy_cursors()
-      start_cursor()
+      Lulu::Beachballs.start() if defined? Lulu::Beachballs
       
       #Check if both groups/components are solid.
       return if !is_solid?(primary) || !is_solid?(secondary)
@@ -354,7 +360,7 @@ module Imp_EneSolidTools
       
       
     ensure
-      stop_cursor()
+      Lulu::Beachballs.stop() if defined? Lulu::Beachballs
       return is_solid?(primary)
     end
     
@@ -371,12 +377,9 @@ module Imp_EneSolidTools
 =end
 
     def self.multisub(primary, secondary, settings)
-      #@progress = 'Working |'
+      @progress = 'Working |'
       @is_multisub = true
-      @busy_cursors || init_busy_cursors()
-
-      # 
-      start_cursor()
+      Lulu::Beachballs.start() if defined? Lulu::Beachballs
       
       # Create a material to apply to the cut faces if settings[:paint]
       # I can imagine painting cut faces with cross hatching, etc.
@@ -395,9 +398,8 @@ module Imp_EneSolidTools
       
       multisub_recurse(primary, secondary, scale = 1000, paint, settings[:cut_sub], settings[:unique])
       
-      #z = 10/0 # test exception
     ensure 
-      stop_cursor()
+      Lulu::Beachballs.stop() if defined? Lulu::Beachballs
       @is_multisub = nil
     end
 
@@ -413,8 +415,8 @@ module Imp_EneSolidTools
     
     def self.multisub_recurse(primary, secondary, scale, paint, cut_sub, unique)
       primary.each do |target|
-        #Sketchup.status_text = @progress
-        #@progress << '|'
+        Sketchup.status_text = @progress
+        @progress << '|'
         
         
         # running with scissors?
@@ -440,76 +442,6 @@ module Imp_EneSolidTools
         end
       end
     end    
-
-    # load the four quadrant cursors that we will animate while we are busy
-    def self.init_busy_cursors
-      @busy_cursors = []
-      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ1.png"), 2, 2)
-      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ2.png"), 2, 2)
-      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ3.png"), 2, 2)
-      # @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_waitQ4.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ1.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ2.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ3.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ4.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ5.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ6.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ7.png"), 2, 2)
-      @busy_cursors << UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ8.png"), 2, 2)
-      @cursor_index = 0
-      @time = Time.now
-    end
-    
-    # This set of methods animates the cursor
-    # A signal will interrupt any ruby code (running or sleeping)
-    # and will fire *after* long calls into the Sketchup API code
-    #
-    # We have wrapped all of the calls to solids.rb with an ensure to 
-    # stop the spinning cursor if an exception occurs
-    
-    # Trap SIGINT siganl in the main thread since
-    # only the main thread can access the UI.set_cursor
-    # during an active model operation
-    if !@old_signal_handler
-      puts 'Improved ene solids.rb - adding Signal trap SIGINT'
-      @old_signal_handler = Signal.trap("INT") do 
-        #puts 'Cursor Thread Interrupt'
-        if @cursor_do 
-          @cursor_index = (@cursor_index + 1) % 8
-          UI.set_cursor(@busy_cursors[@cursor_index])
-          @cursor_do = nil
-        else
-          # try to call the chain of handlers if I have no work to do
-          # https://stackoverflow.com/questions/29568298/run-code-when-signal-is-sent-but-do-not-trap-the-signal-in-ruby
-          # this might be total BS, this has not been debugged
-          @old_signal_handler.call if @old_signal_handler.respond_to?(:call)
-        end
-      end
-    end
-    
-    def self.start_cursor()
-      #puts 'start cursor thread'
-      @time = Time.now
-      @cursor_thread = Thread.new {cursor_worker_thread()}
-      @cursor_thread.priority = 4
-    end
-    
-    def self.stop_cursor()
-       #puts 'stop cursor thread'
-       #terminate the worker thread
-       puts 'Improved Ene solid tools Execution time = ' + (Time.now - @time).to_s
-       @cursor_thread.exit 
-    end
-    
-    def self.cursor_worker_thread()
-      while true
-        sleep(0.1)
-        #send the INT signal to the main thread
-        @cursor_do = true
-        Process.kill("INT", Process.pid)
-      end 
-    end
-    
       
     # Internal: Get the Entities object for either a Group or ComponentInstance.
     # SU 2014 and lower doesn't support Group#definition.

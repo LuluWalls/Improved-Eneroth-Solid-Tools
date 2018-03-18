@@ -81,7 +81,7 @@ module Imp_EneSolidTools
     def activate
       @ph = Sketchup.active_model.active_view.pick_helper
       @cursor_normal = UI.create_cursor(File.join(PLUGIN_DIR, "images", self.class::CURSOR_FILENAME), 2, 2)
-      @cursor_wait = UI.create_cursor(File.join(PLUGIN_DIR, "images", "cursor_wait.png"), 2, 2)
+      @cursor_wait = UI.create_cursor(File.join(PLUGIN_DIR, "images", "BWaitQ0.png"), 2, 2)
       @cursor = @cursor_normal
       @@active_tool_class = self.class
       reset

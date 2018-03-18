@@ -11,6 +11,7 @@ module Imp_EneSolidTools
 
   Sketchup.require(File.join(PLUGIN_DIR, "solids"))
   Sketchup.require(File.join(PLUGIN_DIR, "tools"))
+  #Sketchup.require(File.join(PLUGIN_DIR, "Lulu_Beachballs_core"))
 
   # Reload whole extension (except loader) without littering
   # console. Inspired by ThomTohm's method.
