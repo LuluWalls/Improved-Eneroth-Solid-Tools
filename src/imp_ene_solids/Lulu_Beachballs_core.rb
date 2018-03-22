@@ -116,6 +116,8 @@ else
       # Trap SIGINT signal in the main thread since
       # only the main thread can access the UI.set_cursor
       # during an active model operation
+      # WARNING - Do not blithely add a SIGINT handler to your ruby code, it is not safe. This code is for demo purposes only!!!
+      # if you ignore this warning other developers will find you
       if !@old_signal_handler
         puts 'Lulu\'s Beachballs - adding Signal trap SIGINT'
         @old_signal_handler = Signal.trap("INT") do 
