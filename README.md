@@ -6,7 +6,7 @@ I'm fairly certain the new solid tools work in the same manner as the Julia's or
 Tested with Sketchup versions 8, 2015, and 2017
 
 ## About the new Multi-Subtract tool ![Alt text](src/imp_ene_solids/images/cursor_multisub.png?raw=true "Title")
-The multi-subtract tool works in teh same manner as the original subtract tool but differs in that it allows the user to select multiple objects to be 'cut' with a secondary object.
+The multi-subtract tool works in the same manner as the original subtract tool but differs in that it allows the user to select multiple objects to be 'cut' with a secondary object.
 
 ## To use the Multi-Subtract tool
 Select zero, one or more solids,  'the primary collection'.
@@ -42,7 +42,7 @@ The options are:
  
 Hey Lulu, why would you go to all of this trouble?
  
- Well, I wanted to make a presentation like this
+ Well, I wanted to make a skalpish presentation like this
  
  
   ![Alt text](src/imp_ene_solids/images/timber_slice.jpg?raw=true "Title")
