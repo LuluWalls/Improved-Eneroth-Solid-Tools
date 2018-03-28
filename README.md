@@ -1,5 +1,5 @@
 # Improved-Eneroth-Solid-Tools
-An updated version of eneroth-solid-tools: https://github.com/Eneroth3/Eneroth-Solid-Tools by me.
+An updated version of eneroth-solid-tools: https://github.com/Eneroth3/Eneroth-Solid-Tools by me. After some code review I hope this code will be merged into Julia's Christina's repo.
 
 I'm fairly certain the new solid tools work in the same manner as the Julia's origial design. We have of course 'fixed' many of the shortcomings of the earlier algorithms, but not all. And,  there continue to be issues with tiny faces.
 
