@@ -36,7 +36,7 @@ The options are:
  
  
  
-Hey Lulu, why would you go to all of this trouble?
+Someone asked me "Hey Lulu, why would you go to all of this trouble?"
  
  Well, I wanted to make a skalpish presentation like this
  
